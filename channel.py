@@ -256,13 +256,18 @@ class Channel:
         if not stream_data["stream"]:
             return None
         stream = Stream.from_get_stream(self, stream_data)
-        available_drops: JsonType = await self._twitch.gql_request(
-            GQL_OPERATIONS["AvailableDrops"].with_variables({"channelID": str(self.id)})
-        )
-        stream.drops_enabled = any(
-            bool(c["timeBasedDrops"])
-            for c in (available_drops["data"]["channel"]["viewerDropCampaigns"] or [])
-        )
+        try:
+            available_drops: JsonType = await self._twitch.gql_request(
+                GQL_OPERATIONS["AvailableDrops"].with_variables({"channelID": str(self.id)})
+            )
+            stream.drops_enabled = any(
+                bool(c["timeBasedDrops"])
+                for c in (available_drops["data"]["channel"]["viewerDropCampaigns"] or [])
+            )
+        except Exception as exc:
+            raise MinerException(
+                f"Affected channel: {self.name}({self._login}, {self.id})"
+            ) from exc
         return stream
 
     async def update_stream(self, *, trigger_events: bool) -> bool:
